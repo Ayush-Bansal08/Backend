@@ -8,11 +8,20 @@ import connectDb from "./db/index.js";
 const app = express();
 
 dotenv.config();
-connectDb();
-
-app.listen(process.env.PORT, ()=>{
+connectDb()
+.then(()=>{
+    app.on("error", (error)=>{
+        console.error("Error connecting to MongoDB:", error);
+    });
+    app.listen(process.env.PORT, ()=>{
     console.log(`Server is running on port ${process.env.PORT}`);
 });
+})
+.catch((error)=>{
+    console.error("Error connecting to MongoDB:", error);
+});
+
+
 // direct method to connect to MongoDB database using mongoose and start the server
 /*
 (async ()=>{
