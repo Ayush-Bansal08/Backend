@@ -2,10 +2,10 @@ import mongoose, { connect } from "mongoose";
 import dotenv from "dotenv";
 import { databaseName } from "./constants.js";
 import express from "express";
+import {app} from "./app.js";
 
 import connectDb from "./db/index.js";
 
-const app = express();
 
 dotenv.config();
 connectDb()
