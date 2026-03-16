@@ -1,6 +1,8 @@
 import {v2 as cloudinary} from 'cloudinary';
 import { error } from 'console';
 import fs from "fs";
+import dotenv from "dotenv";
+dotenv.config({path: "./.env"});
 
 
 
@@ -31,7 +33,7 @@ const uploadFileOnCloudinary = async(localfilepath) =>{
             console.log("localfile path not found");
             throw new Error("Local file path is required for uploading to Cloudinary");
         }
-         const response = await cloudinary.v2.uploader.upload(localfilepath,{
+         const response = await cloudinary.uploader.upload(localfilepath,{
             resource_type: "auto", // auto detect the file type
         });
         console.log("File uploaded successfully to Cloudinary");
@@ -48,5 +50,6 @@ const uploadFileOnCloudinary = async(localfilepath) =>{
 }
 
 
-export default uploadFileOnCloudinary;
+export { uploadFileOnCloudinary };
+
 

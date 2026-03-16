@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import User from "../models/user.model.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import {userModel} from "../models/user.model.js";
+import { uploadFileOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 const registerUser = asyncHandler(  async(req,res)=>{
@@ -26,7 +26,7 @@ const registerUser = asyncHandler(  async(req,res)=>{
         }
 
         // check if the username or password already exists
-      const existedUser =  User.findOne({$or: [{username}, {email}]})
+      const existedUser = await userModel.findOne({$or: [{username}, {email}]})
       if(existedUser) {
             return res.status(409).json({
                 success: false,
@@ -44,8 +44,8 @@ const registerUser = asyncHandler(  async(req,res)=>{
         });
       }
 
-     const avataarDB= await uploadToCloudinary(avatarLocalPath,"avatar") // tym lagega to await kro
-        const coverImageDB = await uploadToCloudinary(imagesLocalPath,"coverimage")
+     const avataarDB= await uploadFileOnCloudinary(avatarLocalPath)
+     const coverImageDB = await uploadFileOnCloudinary(imagesLocalPath)
         if(!avataarDB || !coverImageDB) {
             return res.status(500).json({
                 success: false,
@@ -54,28 +54,30 @@ const registerUser = asyncHandler(  async(req,res)=>{
         }
 
         // now i am giving all thsis data to mongoose(USER) to store the data
-        const user = await User.create({
+        const user = await userModel.create({
             username: username.toLowerCase(),
             email,
             avatar: avataarDB.url,
-            coverimage: coverImageDB.url,
+            images: coverImageDB.url,
             fullname,
-            password
+             
 })
 
-const createdUser=await user.findById(user._id).select("-password -refreshToken") // we dont want to send the password and refresh token in the response\
+const createdUser=await userModel.findById(user._id).select("-password -refreshToken") // we dont want to send the password and refresh token in the response
 
-if(!createdUser) {
+if(!createdUser){
     return res.status(500).json({ 
         success: false,
         message: "Error in creating user in database"
     });
 }
+    console.log("User registered successfully", createdUser);
 
 return res.status(201).json(
-    new ApiResponse(200, true, "User registered successfully", createdUser)
+    new ApiResponse(200, createdUser, "User registered successfully", true)
 )
 
 
 
-export { registerUser }
+})
+export {registerUser}
