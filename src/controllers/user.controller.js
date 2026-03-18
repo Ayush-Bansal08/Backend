@@ -232,8 +232,89 @@ const refreshAccessToken = asyncHandler(async (req,res)=>{
     
   }
 
-  
+
 
 
 })
-export {registerUser, logInUser, logOutUser, refreshAccessToken}
+
+const changeCurrentPassword = asyncHandler(async (req,res)=>{
+
+    const {oldPassword, newPassword}= req.field
+    const user = await userModel.findById(req.user._id)
+    const isPasswordCorrcte= await user.isPasswordCorrect(oldPassword)
+    if(!isPasswordCorrcte){ 
+        return req.status(401).json({
+            success: false,
+            message: "Old password is incorrect"
+        })
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false}) // this will trigger the pre save middleware and hash the password before saving it to the database
+  return req.ststus(200).json({
+    success: true,
+    message: "Password changed successfully"
+  })
+})
+
+
+  const getCurrentUser = asyncHandler(async (req,res)=>{
+    return res.status(200).json({
+        success: true,
+        user: req.user // we have the access of user in the req object because we have used the verifyJWT middleware in the route
+    })
+  })
+
+  const UpdateAccountDetails = asyncHandler(async (req,res)=>{
+    const {username, email, fullname} = req.body
+    const user = await userModel.findByIdAndUpdate(req.user._id, {
+        $set: {
+            username,
+            email,
+            fullname
+        }
+    }, { new: true })
+
+    return res.status(200).json({
+        success: true,
+        message: "Account details updated successfully",
+        user: user
+    }).select("-password -refreshToken") // we dont want to send the password and refresh token in the response
+  })
+
+  const updateUserAvatar = asyncHandler(async(req, res) => {
+    const avatarLocalPath = req.file?.path // recieved the file path from multer middleware and we have defined the path in the multer middleware as well
+    
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    //TODO: delete old image - assignment
+
+    const avatar = await uploadFileOnCloudinary(avatarLocalPath)
+
+    if (!avatar.url) {
+        throw new ApiError(400, "Error while uploading on avatar")
+        
+    }
+
+    const user = await userModelr.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar: avatar.url
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Avatar image updated successfully")
+    )
+})
+
+
+
+export {registerUser, logInUser, logOutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, UpdateAccountDetails, updateUserAvatar}
