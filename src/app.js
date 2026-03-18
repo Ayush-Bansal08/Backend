@@ -13,7 +13,7 @@ app.use(cors({
 app.use(express.json({limit: '10Kb'}));
 app.use(urlencoded({extended: true, limit: '10Kb'}));
 app.use(express.static('public'));
-app.use(cookieParser());
+app.use(cookieParser()); //whenever we use req or res it will have the access of cookies
 
 
 // import routes
