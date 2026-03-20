@@ -3,6 +3,7 @@ import {userModel} from "../models/user.model.js";
 import { uploadFileOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import { response } from "express";
 
 
 const registerUser = asyncHandler(  async(req,res)=>{
@@ -298,7 +299,7 @@ const changeCurrentPassword = asyncHandler(async (req,res)=>{
         
     }
 
-    const user = await userModelr.findByIdAndUpdate(
+    const user = await userModel.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -313,6 +314,130 @@ const changeCurrentPassword = asyncHandler(async (req,res)=>{
     .json(
         new ApiResponse(200, user, "Avatar image updated successfully")
     )
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const {username} = req.params
+     if(!username){
+        return res.status(400).json({
+            success: false,
+            message: "Username is required"
+        })
+     }
+    const channel = await userModel.aggregate([
+        {
+            $match: {
+                username: username.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions", // the name of the collection we want to join with
+                localField: "_id", // the field from the user collection
+                foreignField: "channel", // the field from the subscription collection
+                as: "subscribers" // the name of the field in the output document where the joined data will be stored
+            }
+        },
+            {
+                $lookup: {
+                    from: "subscriptions", // the name of the collection we want to join with
+                    localField: "_id", // the field from the user collection
+                    foreignField: "subscriber", // the field from the subscription collection
+                    as: "subscribedTo" // the name of the field in the output document where the joined data will be stored
+                }
+            },{
+                $addFields: {
+                    SubscribersCount: {
+                        $size: "$subscribers" // we are counting the number of subscribers by getting the size of the subscribers array
+                    } ,
+                    SubscribedToCount: {
+                        $size: "$subscribedTo" // we are counting the number of subscribedTo by getting the size of the subscribedTo array  
+            },
+                    isSubscribed: {
+                        $cond: {
+                            if: {
+                                $in: [req.user?._id, "$subscribers.subscriber"] },// we are checking if the current user is in the subscribers array or not
+                            then: true,
+                            else: false
+                            },
+
+                    }
+        }
+    },
+      {
+        $project: {
+            SubscribersCount: 1,
+            SubscribedToCount: 1,
+            isSubscribed: 1,
+            username: 1,
+            email: 1,
+            fullname: 1,
+            avatar: 1,
+            images: 1,
+            email: 1,
+    }
+}
+     ])
+})
+  
+     
+if(!channel?.length){
+    return res.status(404).json({
+        success: false,
+        message: "User not found with this username"
+    })
+}
+
+return response.status(200).json({
+    success: true,
+    message: "User channel profile fetched successfully",
+    user: channel[0]
+})
+
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+
+     const user = await userModel.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id) // here mongoose doesnt give us the id this comes directly so we have to parse it here using mongoose then use it 
+                                                    }
+        },
+        {
+            $lookup: {
+                from: "videos", // the name of the collection we want to join with
+                localField: "watchHistory", // the field from the user collection
+                foreignField: "_id", // the field from the video collection
+                as: "watchHistoryDetails", // the name of the field in the output document where the joined data will be stored
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users", // the name of the collection we want to join with
+                            localField: "owner", // the field from the video collection
+                            foreignField: "_id", // the field from the user collection
+                            as: "ownerDetails" // the name of the field in the output document where the joined data will be stored
+                        }
+                    },
+                    {
+                        $unwind: "$ownerDetails"
+                    },
+                    {
+                        $project: { 
+                            fullname: "$ownerDetails.fullname",
+                            username: "$ownerDetails.username",
+                            avatar: "$ownerDetails.avatar"
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res.status(200).json({
+        success: true,
+        message: "Watch history fetched successfully",
+        user: user[0].watchHistory
+    })
 })
 
 
