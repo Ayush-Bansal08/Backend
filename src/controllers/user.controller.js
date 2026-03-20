@@ -169,7 +169,7 @@ const logOutUser = asyncHandler(async (req,res)=>{
     //now we will clear the refresh token from the database and also clear the cookie from the frontend
     const userId = req.user._id // we have the access of user in the req object because we have used the verifyJWT middleware in the route
     await userModel.findByIdAndUpdate(userId, { 
-        $set: { refreshToken: null }, new : true})
+        $unset: { refreshToken: 1 }, new : true})
         
         
         const options = {  
